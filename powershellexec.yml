@@ -1,0 +1,64 @@
+To execute a PowerShell script using an Ansible playbook, you can use the `win_shell` or `win_command` module. Below is an example Ansible playbook that copies a PowerShell script to a Windows server and then executes it.
+
+### **Ansible Playbook to Execute PowerShell Script**
+
+```yaml
+---
+- name: Execute PowerShell Script on Windows Server
+  hosts: windows
+  gather_facts: no
+  tasks:
+    
+    - name: Copy PowerShell script to the server
+      win_copy:
+        src: /path/to/your/script.ps1  # Local path of the PowerShell script on Ansible control node
+        dest: C:\temp\script.ps1       # Destination path on the Windows server
+
+    - name: Run the PowerShell script
+      win_shell: powershell.exe -ExecutionPolicy Bypass -File C:\temp\script.ps1
+      args:
+        executable: powershell
+
+    - name: Remove the PowerShell script after execution (optional)
+      win_file:
+        path: C:\temp\script.ps1
+        state: absent
+```
+
+### **Explanation**:
+
+1. **win_copy**: This task copies the PowerShell script from the Ansible control machine to the Windows server. Adjust the `src` and `dest` paths according to your setup.
+   
+2. **win_shell**: This task runs the PowerShell script on the Windows server using `powershell.exe`. The `-ExecutionPolicy Bypass` option is used to bypass the script execution policy temporarily.
+   
+3. **win_file**: (Optional) This task removes the PowerShell script from the server after execution if you do not want to keep the script.
+
+### **Inventory File Example (`hosts`)**:
+
+```ini
+[windows]
+winserver1 ansible_host=192.168.1.10 ansible_user=Administrator ansible_password=YourPassword ansible_port=5986 ansible_connection=winrm ansible_winrm_server_cert_validation=ignore
+```
+
+### **Execution**:
+
+Save the playbook (e.g., `run_ps_script.yml`), and then run the playbook using:
+
+```bash
+ansible-playbook -i hosts run_ps_script.yml
+```
+
+### **PowerShell Script Example**:
+
+Make sure the PowerShell script (`script.ps1`) you're copying contains valid PowerShell commands. Here is an example script that installs AD DS:
+
+```powershell
+# PowerShell script to install AD DS
+Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+```
+
+### **Additional Notes**:
+
+- Ensure WinRM is configured on the Windows server for Ansible to connect and execute commands remotely.
+- If you are handling sensitive data (e.g., passwords), consider using Ansible Vault to encrypt sensitive values.
+- You can modify the script path and the execution logic as per your environment's requirements.
