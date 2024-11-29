@@ -1,0 +1,104 @@
+If you want to use `subtractFromTime` to calculate the difference between two dates and then loop through the dates in Azure Data Factory (ADF), here's how you can achieve that.
+
+### Correcting the Approach Using `subtractFromTime`
+
+To calculate the difference between two dates in ADF, **`subtractFromTime()`** is the correct function to use. This function can return the difference between two `DateTime` values in specific units (like days, hours, minutes, etc.).
+
+Let's break this down with the correct approach:
+
+### Steps:
+
+1. **Calculate the Number of Days Between `startDate` and `endDate`**:
+   We will use `subtractFromTime()` to get the difference in days between `startDate` and `endDate`.
+
+2. **Generate Date Range with `range()`**:
+   We'll generate an array of integers (representing day offsets from `startDate`) using `range()` based on the calculated day difference.
+
+### Full Working Example:
+
+Let’s set up the pipeline with **`startDate`** and **`endDate`** and perform the operations in the **ForEach** loop.
+
+### Step 1: **Parameters Setup**
+
+Define the following pipeline parameters:
+- **`startDate`**: A string parameter, e.g., `2024-04-01`
+- **`endDate`**: A string parameter, e.g., `2024-04-05`
+
+### Step 2: **Calculate the Difference Between Dates Using `subtractFromTime`**
+
+We need to calculate the number of days between `startDate` and `endDate`:
+
+```text
+@subtractFromTime(formatDateTime(pipeline().parameters.endDate, 'yyyy-MM-dd'), formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), 'Day')
+```
+
+- This calculates the **difference** in **days** between `startDate` and `endDate`.
+
+### Step 3: **Generate Date Sequence Using `range()`**
+
+Now, we will use `range()` to generate an array of integers representing day offsets from the `startDate` and iterate over these offsets.
+
+```text
+@range(0, add(subtractFromTime(formatDateTime(pipeline().parameters.endDate, 'yyyy-MM-dd'), formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), 'Day'), 1))
+```
+
+- This will generate an array of integers from `0` to the number of days between `startDate` and `endDate` (inclusive).
+
+### Step 4: **ForEach Activity Setup**
+
+1. **Add the ForEach Activity** to the pipeline.
+   - **Items**: Set this to the range expression above.
+   
+   ```text
+   @range(0, add(subtractFromTime(formatDateTime(pipeline().parameters.endDate, 'yyyy-MM-dd'), formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), 'Day'), 1))
+   ```
+
+2. **Inside the ForEach Activity**, you will add two **Set Variable** activities to calculate the `startDate` and `endDate` for each iteration:
+
+   - **Set `startDateVar`**:
+     - Expression:
+       ```text
+       @formatDateTime(addDays(formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), item()), 'yyyy-MM-dd')
+       ```
+
+   - **Set `endDateVar`**:
+     - Expression:
+       ```text
+       @formatDateTime(addDays(formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), add(item(), 1)), 'yyyy-MM-dd')
+       ```
+
+### Full Example of the Pipeline Steps:
+
+1. **Parameters**:
+   - `startDate`: `2024-04-01`
+   - `endDate`: `2024-04-05`
+
+2. **Activities**:
+
+   - **ForEach** Activity:
+     - **Items**:
+       ```text
+       @range(0, add(subtractFromTime(formatDateTime(pipeline().parameters.endDate, 'yyyy-MM-dd'), formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), 'Day'), 1))
+       ```
+
+     - Inside **ForEach**:
+       - **Set Variable**: `startDateVar` with the expression:
+         ```text
+         @formatDateTime(addDays(formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), item()), 'yyyy-MM-dd')
+         ```
+       - **Set Variable**: `endDateVar` with the expression:
+         ```text
+         @formatDateTime(addDays(formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), add(item(), 1)), 'yyyy-MM-dd')
+         ```
+
+### Notes:
+
+- **`subtractFromTime()`**: The `subtractFromTime()` function takes three arguments:
+  - `startDate` and `endDate` as the two `DateTime` values.
+  - The unit (`'Day'`, `'Hour'`, `'Minute'`, etc.) specifies the time unit for the difference.
+
+- **`range()`**: The `range()` function generates a sequence of integers, and in this case, each integer represents an offset in days from the `startDate`.
+
+### Conclusion:
+
+Using `subtractFromTime` to calculate the difference in days between `startDate` and `endDate`, and combining it with the `range()` function to create a list of day offsets, allows you to efficiently loop through the date range in ADF. This approach avoids the need for manual date calculations and provides a clean solution for iterating through date ranges in Azure Data Factory.
