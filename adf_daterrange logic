@@ -1,5 +1,8 @@
 If you want to use `subtractFromTime` to calculate the difference between two dates and then loop through the dates in Azure Data Factory (ADF), here's how you can achieve that.
 
+@range(0, add(subtractFromTime(formatDateTime(pipeline().parameters.endDate, 'yyyy-MM-dd'), formatDateTime(pipeline().parameters.startDate, 'yyyy-MM-dd'), 'Day'), 1))
+
+
 ### Correcting the Approach Using `subtractFromTime`
 
 To calculate the difference between two dates in ADF, **`subtractFromTime()`** is the correct function to use. This function can return the difference between two `DateTime` values in specific units (like days, hours, minutes, etc.).
