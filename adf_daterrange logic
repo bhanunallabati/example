@@ -1,3 +1,11 @@
+
+
+@formatDateTime(addDays(utcnow(), -1), 'yyyy-MM-dd')
+
+@formatDateTime(utcnow(), 'yyyy-MM-dd')
+
+
+
 If you want to use `subtractFromTime` to calculate the difference between two dates and then loop through the dates in Azure Data Factory (ADF), here's how you can achieve that.
 
 ticks
