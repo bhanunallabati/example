@@ -1,37 +1,98 @@
 import requests
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 
-def trigger_brandwatch_api(queryId, startDate, endDate, headers=None):
+def get_secret_from_key_vault(vault_url, secret_name):
     """
-    Function to trigger the Brandwatch API based on queryId, startDate, and endDate parameters and return results.
+    Retrieve a secret from Azure Key Vault.
+
+    :param vault_url: URL of the Azure Key Vault
+    :param secret_name: Name of the secret to retrieve
+    :return: The value of the retrieved secret
+    """
+    try:
+        credential = DefaultAzureCredential()
+        client = SecretClient(vault_url=vault_url, credential=credential)
+        secret = client.get_secret(secret_name)
+        return secret.value
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+def get_auth_token(client_id, username, password):
+    """
+    Function to retrieve the authentication token from the Brandwatch API.
+
+    :param client_id: Client ID for the API request
+    :param username: Username for the API request
+    :param password: Password for the API request
+    :return: Authentication token as a string
+    """
+    try:
+        auth_url = "https://api.brandwatch.com/oauth/token"
+        payload = {
+            'grant_type': 'api-password',
+            'client_id': client_id,
+            'username': username,
+            'password': password
+        }
+        response = requests.post(auth_url, data=payload)
+        response.raise_for_status()
+        token = response.json().get('access_token')
+        return token
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")
+        return None
+
+def trigger_brandwatch_api(queryId, startDate, endDate, metric_number, token):
+    """
+    Function to trigger the Brandwatch API based on queryId, startDate, endDate, and metric_number parameters.
 
     :param queryId: Query ID for the API request
-    :param startDate: Start date parameter (e.g., '2016-05-01')
-    :param endDate: End date parameter (e.g., '2016-05-02')
-    :param headers: Optional dictionary of headers to include in the request
+    :param startDate: Start date parameter
+    :param endDate: End date parameter
+    :param metric_number: Metric number parameter
+    :param token: Authentication token
     :return: JSON response from the API
     """
     try:
-        # Construct the URL with the provided parameters
         base_url = 'https://api.brandwatch.com/projects/289733322/data/mentions'
-        endpoint = f"{base_url}?queryId={queryId}&startDate={startDate}&endDate={endDate}"
+        endpoint = f"{base_url}?queryId={queryId}&startDate={startDate}&endDate={endDate}&metric_number={metric_number}"
+        
+        headers = {
+            'Authorization': f'Bearer {token}'
+        }
         
         response = requests.get(endpoint, headers=headers)
-        response.raise_for_status()  # Raise HTTPError for bad responses
-        return response.json()  # Return the response as a JSON object
+        response.raise_for_status()
+        return response.json()
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")
         return None
 
 # Example usage
-queryId = '348973733'
-startDate = '2016-05-01'
-endDate = '2016-05-02'
-headers = {
-    'Authorization': 'Bearer your_access_token'
-}
+vault_url = 'https://your-key-vault-name.vault.azure.net/'
+client_id_secret_name = 'your-client-id-secret-name'
+username_secret_name = 'your-username-secret-name'
+password = 'your_password'  # It's a good practice to retrieve this from a secure source as well
 
-result = trigger_brandwatch_api(queryId, startDate, endDate, headers)
-if result:
-    print(result)
+client_id = get_secret_from_key_vault(vault_url, client_id_secret_name)
+username = get_secret_from_key_vault(vault_url, username_secret_name)
+
+if client_id and username:
+    auth_token = get_auth_token(client_id, username, password)
+    if auth_token:
+        queryId = '348973733'
+        startDate = '2016-05-01'
+        endDate = '2016-05-02'
+        metric_number = 'your_metric_number'  # Add appropriate metric number
+        
+        result = trigger_brandwatch_api(queryId, startDate, endDate, metric_number, auth_token)
+        if result:
+            print(result)
+        else:
+            print("Failed to retrieve data from Brandwatch API")
+    else:
+        print("Failed to retrieve authentication token")
 else:
-    print("Failed to retrieve data")
+    print("Failed to retrieve client ID or username from Key Vault")
