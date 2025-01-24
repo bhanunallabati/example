@@ -1,0 +1,84 @@
+Install-Module -Name Az -AllowClobber -Force
+# Define the function to retrieve a secret from Azure Key Vault
+function Get-SecretFromKeyVault {
+    param (
+        [string]$VaultName,
+        [string]$SecretName
+    )
+
+    # Retrieve the secret
+    $secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName
+    return $secret.SecretValueText
+}
+
+# Define the function to get the authentication token
+function Get-AuthToken {
+    param (
+        [string]$ClientId,
+        [string]$Username,
+        [string]$Password
+    )
+
+    $authUrl = "https://api.brandwatch.com/oauth/token"
+    $body = @{
+        grant_type = "api-password"
+        client_id  = $ClientId
+        username   = $Username
+        password   = $Password
+    }
+    $response = Invoke-RestMethod -Method Post -Uri $authUrl -Body $body
+    return $response.access_token
+}
+
+# Define the function to trigger the Brandwatch API
+function Trigger-BrandwatchAPI {
+    param (
+        [string]$QueryId,
+        [string]$StartDate,
+        [string]$EndDate,
+        [string]$MetricNumber,
+        [string]$Token
+    )
+
+    $baseUrl = "https://api.brandwatch.com/projects/289733322/data/mentions"
+    $url = "$baseUrl?queryId=$QueryId&startDate=$StartDate&endDate=$EndDate&metric_number=$MetricNumber"
+    $headers = @{
+        Authorization = "Bearer $Token"
+    }
+
+    $response = Invoke-RestMethod -Method Get -Uri $url -Headers $headers
+    return $response
+}
+
+# Example usage
+$vaultName = "your-key-vault-name"
+$clientIdSecretName = "your-client-id-secret-name"
+$usernameSecretName = "your-username-secret-name"
+$password = "your_password"  # It's a good practice to retrieve this from a secure source as well
+
+# Retrieve client ID and username from Key Vault
+$clientId = Get-SecretFromKeyVault -VaultName $vaultName -SecretName $clientIdSecretName
+$username = Get-SecretFromKeyVault -VaultName $vaultName -SecretName $usernameSecretName
+
+if ($clientId -and $username) {
+    # Get authentication token
+    $authToken = Get-AuthToken -ClientId $clientId -Username $username -Password $password
+    if ($authToken) {
+        # Trigger the Brandwatch API
+        $queryId = "348973733"
+        $startDate = "2016-05-01"
+        $endDate = "2016-05-02"
+        $metricNumber = "your_metric_number"  # Add appropriate metric number
+        
+        $result = Trigger-BrandwatchAPI -QueryId $queryId -StartDate $startDate -EndDate $endDate -MetricNumber $metricNumber -Token $authToken
+        if ($result) {
+            $result | ConvertTo-Json
+        } else {
+            Write-Output "Failed to retrieve data from Brandwatch API"
+        }
+    } else {
+        Write-Output "Failed to retrieve authentication token"
+    }
+} else {
+    Write-Output "Failed to retrieve client ID or username from Key Vault"
+}
