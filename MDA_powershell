@@ -1,0 +1,107 @@
+using namespace System.Net
+
+# Define the function to retrieve a secret from Azure Key Vault
+function Get-SecretFromKeyVault {
+    param (
+        [string]$VaultName,
+        [string]$SecretName
+    )
+
+    # Retrieve the secret
+    $secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName
+    return $secret.SecretValueText
+}
+
+# Define the function to get the authentication token
+function Get-AuthToken {
+    param (
+        [string]$ClientId,
+        [string]$Username,
+        [string]$Password
+    )
+
+    $authUrl = "https://api.brandwatch.com/oauth/token"
+    $body = @{
+        grant_type = "api-password"
+        client_id  = $ClientId
+        username   = $Username
+        password   = $Password
+    }
+    $response = Invoke-RestMethod -Method Post -Uri $authUrl -Body $body
+    return $response.access_token
+}
+
+# Define the function to trigger the Brandwatch API
+function Trigger-BrandwatchAPI {
+    param (
+        [string]$QueryId,
+        [string]$StartDate,
+        [string]$EndDate,
+        [string]$MetricNumber,
+        [string]$Token
+    )
+
+    $baseUrl = "https://api.brandwatch.com/projects/289733322/data/mentions"
+    $url = "$baseUrl?queryId=$QueryId&startDate=$StartDate&endDate=$EndDate&metric_number=$MetricNumber"
+    $headers = @{
+        Authorization = "Bearer $Token"
+    }
+
+    $response = Invoke-RestMethod -Method Get -Uri $url -Headers $headers
+    return $response
+}
+
+# Main function
+param (
+    $Request,
+    $TriggerMetadata
+)
+
+$start_date = $Request.Query.start_date
+$end_date = $Request.Query.end_date
+$metric_number = $Request.Query.metric_number
+$queryId = "348973733"
+
+if (-not $start_date -or -not $end_date -or -not $metric_number) {
+    return [HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::BadRequest
+        Body       = "Please pass start_date, end_date, and metric_number in the query string"
+    }
+}
+
+$vaultUrl = $env:VaultUri
+$clientIdSecretName = $env:ClientIdSecretName
+$usernameSecretName = $env:UsernameSecretName
+$passwordSecretName = $env:PasswordSecretName
+
+$client_id = Get-SecretFromKeyVault -VaultName $vaultUrl -SecretName $clientIdSecretName
+$username = Get-SecretFromKeyVault -VaultName $vaultUrl -SecretName $usernameSecretName
+$password = Get-SecretFromKeyVault -VaultName $vaultUrl -SecretName $passwordSecretName
+
+if ($client_id -and $username -and $password) {
+    $auth_token = Get-AuthToken -ClientId $client_id -Username $username -Password $password
+    if ($auth_token) {
+        $result = Trigger-BrandwatchAPI -QueryId $queryId -StartDate $start_date -EndDate $end_date -MetricNumber $metric_number -Token $auth_token
+        if ($result) {
+            return [HttpResponseContext]@{
+                StatusCode = [HttpStatusCode]::OK
+                Body       = ($result | ConvertTo-Json -Depth 10)
+            }
+        } else {
+            return [HttpResponseContext]@{
+                StatusCode = [HttpStatusCode]::InternalServerError
+                Body       = "Failed to retrieve data from Brandwatch API"
+            }
+        }
+    } else {
+        return [HttpResponseContext]@{
+            StatusCode = [HttpStatusCode]::InternalServerError
+            Body       = "Failed to retrieve authentication token"
+        }
+    }
+} else {
+    return [HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::InternalServerError
+        Body       = "Failed to retrieve secrets from Key Vault"
+    }
+}
