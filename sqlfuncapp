@@ -32,6 +32,8 @@ $password = $secret.Value
 # Output the password (this would typically be used to connect to the database or other services)
 Write-Output "The password is: $password"
 
+# Define the connection string using Managed Identity for authentication
+$connectionString = "Server=$serverName;Database=$databaseName;Authentication=ActiveDirectoryManagedIdentity"
 
 # Create a connection string
 $connectionString = "Server=$server;Database=$database;User Id=$user;Password=$password;"
