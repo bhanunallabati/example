@@ -1,0 +1,74 @@
+param($Request, $TriggerMetadata)
+
+# Accept parameters from the URL query string
+$startDate = $Request.QueryParameters["startDate"]
+$endDate = $Request.QueryParameters["endDate"]
+$projectID = $Request.QueryParameters["projectID"]
+
+# Check if required parameters are provided
+if (-not $startDate -or -not $endDate -or -not $projectID) {
+    return [HttpResponse]@{
+        StatusCode = 400
+        Body = "Missing required query parameters: startDate, endDate, projectID"
+    }
+}
+
+# Setup the connection string for the SQL Server database
+# Replace with your actual SQL Server database connection details
+$server = "your_server_name"
+$database = "your_database_name"
+$user = "your_sql_username"
+
+# Replace these variables with your actual Key Vault name and the secret name
+$keyVaultName = "your-keyvault-name"
+$secretName = "your-secret-name" # This is the name of the secret you want to retrieve (e.g., "db-password")
+
+# Retrieve the secret from Azure Key Vault
+$secret = Get-AzKeyVaultSecret -VaultName $keyVaultName -Name $secretName
+
+# Access the value of the secret (the actual password or secret value)
+$password = $secret.Value
+
+# Output the password (this would typically be used to connect to the database or other services)
+Write-Output "The password is: $password"
+
+
+# Create a connection string
+$connectionString = "Server=$server;Database=$database;User Id=$user;Password=$password;"
+
+# Write SQL query using passed parameters
+$query = @"
+SELECT * 
+FROM your_table_name
+WHERE projectID = '$projectID'
+AND date >= '$startDate'
+AND date <= '$endDate'
+"@
+
+try {
+    # Query the SQL database
+    $result = Invoke-Sqlcmd -Query $query -ConnectionString $connectionString
+
+    # If query returns results, format as JSON and return as response
+    if ($result) {
+        return [HttpResponse]@{
+            StatusCode = 200
+            Body = ($result | ConvertTo-Json -Depth 2)
+            Headers = @{
+                "Content-Type" = "application/json"
+            }
+        }
+    } else {
+        return [HttpResponse]@{
+            StatusCode = 404
+            Body = "No records found matching the query parameters."
+        }
+    }
+}
+catch {
+    # Handle SQL errors or other exceptions
+    return [HttpResponse]@{
+        StatusCode = 500
+        Body = "An error occurred while querying the database: $_"
+    }
+}
