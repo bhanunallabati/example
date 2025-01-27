@@ -13,6 +13,24 @@ if (-not $startDate -or -not $endDate -or -not $projectID) {
     }
 }
 
+
+*/
+# Import the Az module (if not already imported)
+Import-Module Az
+
+# Ensure you're logged in to Azure
+Connect-AzAccount
+
+# Define the SQL Server connection details
+$serverName = "your_sql_server.database.windows.net"
+$databaseName = "your_database_name"
+
+# Define the connection string using Managed Identity for authentication
+$connectionString = "Server=$serverName;Database=$databaseName;Authentication=ActiveDirectoryManagedIdentity"
+
+
+/*
+
 # Setup the connection string for the SQL Server database
 # Replace with your actual SQL Server database connection details
 $server = "your_server_name"
