@@ -74,4 +74,90 @@ if ($response -eq $null) {
         StatusCode = [System.Net.HttpStatusCode]::OK
         Body = "The user name for ID $UserID is: $response"
     })
+
+
+
+---------------------------------------------------
+
+
+param($Request, $TriggerMetadata)
+
+# Parse query parameters from HTTP request
+$startdate = $Request.Query.startdate
+$enddate = $Request.Query.enddate
+$QueryID = $Request.Query.QueryID
+
+if (-not $startdate -or -not $enddate -or -not $QueryID) {
+    return @{
+        status = 400
+        body = "startdate, enddate, and QueryID are required query parameters."
+    }
+}
+
+# Construct the SQL query with parameterized inputs to avoid SQL injection
+$query = "SELECT * FROM Records WHERE QueryID = @QueryID AND Date BETWEEN @StartDate AND @EndDate"
+
+# Connection string for Azure SQL Database
+$connectionString = "Server=tcp:mdaservertest.database.windows.net,1433;Initial Catalog=MDAtest;Persist Security Info=False;User ID=mdaadmin;Password=mda#123hai;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+
+# Create and open a connection to the SQL Server
+$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+$command = $connection.CreateCommand()
+$command.CommandText = $query
+
+# Add parameters to the SQL query to prevent SQL injection
+$paramQueryID = $command.CreateParameter()
+$paramQueryID.ParameterName = "@QueryID"
+$paramQueryID.Value = $QueryID
+$command.Parameters.Add($paramQueryID)
+
+$paramStartDate = $command.CreateParameter()
+$paramStartDate.ParameterName = "@StartDate"
+$paramStartDate.Value = $startdate
+$command.Parameters.Add($paramStartDate)
+
+$paramEndDate = $command.CreateParameter()
+$paramEndDate.ParameterName = "@EndDate"
+$paramEndDate.Value = $enddate
+$command.Parameters.Add($paramEndDate)
+
+# Execute the query
+try {
+    $connection.Open()
+    $reader = $command.ExecuteReader()
+
+    # Initialize an array to hold the results
+    $results = @()
+
+    # Read all rows from the SQL query result
+    while ($reader.Read()) {
+        $record = @{
+            RecordID = $reader["RecordID"]
+            QueryID = $reader["QueryID"]
+            Date = $reader["Date"]
+            Value = $reader["Value"]
+        }
+        $results += $record
+    }
+
+    # Close the reader
+    $reader.Close()
+}
+catch {
+    return @{
+        status = 500
+        body = "Error occurred while retrieving data: $_"
+    }
+}
+finally {
+    # Close the connection
+    $connection.Close()
+}
+
+# Return the results in JSON format
+return @{
+    status = 200
+    body = ($results | ConvertTo-Json -Depth 3)
+}
+
 }
