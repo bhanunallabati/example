@@ -1,0 +1,77 @@
+# Input bindings are passed in via param block.
+param($Request, $TriggerMetadata)
+
+# Load .NET assembly
+Add-Type -AssemblyName System.Data.SqlClient
+
+# Retrieve the connection string from the function app settings.
+$connectionString = "Server=tcp:mdaservertest.database.windows.net,1433;Initial Catalog=MDAtest;Persist Security Info=False;User ID=mdaadmin;Password=mda#123hai;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+
+#$connectionString = "Server=tcp:mdaservertest.database.windows.net,1433;Initial Catalog=MDAtest;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication="Active Directory Default";"
+
+# Retrieve UserID from query parameters or request body
+$UserID = $Request.Query.UserID
+if (-not $UserID) {
+    $UserID = $Request.Body.UserID
+}
+
+# Validate UserID
+if (-not $UserID) {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [System.Net.HttpStatusCode]::BadRequest
+        Body = "Please provide a UserID as a query parameter or in the request body."
+    })
+    return
+}
+
+# Define SQL query using parameterized query to avoid SQL injection
+$query = "SELECT UserName FROM Users WHERE UserID = @UserID"
+
+# Create and open a connection
+$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+$command = $connection.CreateCommand()
+$command.CommandText = $query
+
+# Add the UserID parameter to avoid SQL injection
+$param = $command.CreateParameter()
+$param.ParameterName = "@UserID"
+$param.Value = [int]$UserID
+$command.Parameters.Add($param)
+
+# Execute the command
+try {
+    $connection.Open()
+    $reader = $command.ExecuteReader()
+
+    # Initialize a variable to hold the response
+    $response = $null
+
+    if ($reader.HasRows) {
+        while ($reader.Read()) {
+            $response = $reader["UserName"]
+        }
+    } else {
+        $response = "No user found with ID $UserID."
+    }
+}
+catch {
+    # Log and handle errors
+    $response = "Error: $($_.Exception.Message)"
+}
+finally {
+    # Close the connection
+    $connection.Close()
+}
+
+# Return the response
+if ($response -eq $null) {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [System.Net.HttpStatusCode]::NotFound
+        Body = "No user found with ID $UserID."
+    })
+} else {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [System.Net.HttpStatusCode]::OK
+        Body = "The user name for ID $UserID is: $response"
+    })
+}
