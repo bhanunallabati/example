@@ -1,0 +1,82 @@
+import logging
+import pyodbc
+import os
+import azure.functions as func
+from datetime import datetime
+
+# Get the SQL Database connection string from environment variables
+connection_string = os.getenv("SQL_CONNECTION_STRING")
+
+# Helper function to query the database
+def fetch_data_from_db(startdate, enddate, queryid):
+    try:
+        # Establish a connection to the Azure SQL database
+        conn = pyodbc.connect(connection_string)
+        cursor = conn.cursor()
+
+        # Query to fetch data based on provided parameters
+        query = """
+            SELECT * FROM YourTableName
+            WHERE queryid = ? AND date >= ? AND date <= ?
+        """
+        
+        # Execute the query with the parameters
+        cursor.execute(query, (queryid, startdate, enddate))
+        
+        # Fetch all the rows
+        rows = cursor.fetchall()
+
+        # Convert rows to a list of dictionaries (optional)
+        result = [dict(zip([column[0] for column in cursor.description], row)) for row in rows]
+
+        # Close the connection
+        cursor.close()
+        conn.close()
+        
+        return result
+    except Exception as e:
+        logging.error(f"Error fetching data from the database: {e}")
+        return None
+
+# Azure Function entry point
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    # Log the incoming request
+    logging.info('Processing HTTP request to fetch data from Azure SQL Database')
+
+    # Get query parameters
+    startdate_str = req.params.get('startdate')
+    enddate_str = req.params.get('enddate')
+    queryid = req.params.get('queryid')
+
+    # If parameters are missing, return an error message
+    if not all([startdate_str, enddate_str, queryid]):
+        return func.HttpResponse(
+            "Please pass startdate, enddate, and queryid as query parameters.",
+            status_code=400
+        )
+
+    # Convert startdate and enddate to datetime objects
+    try:
+        startdate = datetime.strptime(startdate_str, "%Y-%m-%d")
+        enddate = datetime.strptime(enddate_str, "%Y-%m-%d")
+    except ValueError as e:
+        return func.HttpResponse(
+            f"Error parsing date parameters: {str(e)}",
+            status_code=400
+        )
+
+    # Fetch data from the database
+    result = fetch_data_from_db(startdate, enddate, queryid)
+
+    if result is None:
+        return func.HttpResponse(
+            "Error fetching data from the database.",
+            status_code=500
+        )
+
+    # Return the result as a JSON response
+    return func.HttpResponse(
+        body=str(result),
+        mimetype="application/json",
+        status_code=200
+    )
