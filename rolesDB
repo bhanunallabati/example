@@ -1,0 +1,85 @@
+provider "azurerm" {
+  features {}
+}
+
+# 1. Create a Resource Group
+resource "azurerm_resource_group" "example" {
+  name     = "example-rg"
+  location = "East US"
+}
+
+# 2. Create an Azure SQL Server
+resource "azurerm_sql_server" "example" {
+  name                         = "examplesqlserver"
+  resource_group_name          = azurerm_resource_group.example.name
+  location                     = azurerm_resource_group.example.location
+  administrator_login          = "sqladmin"
+  administrator_login_password = "P@ssw0rd1234"
+}
+
+# 3. Create an Azure SQL Database
+resource "azurerm_sql_database" "example" {
+  name                = "exampledb"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = azurerm_resource_group.example.location
+  server_name         = azurerm_sql_server.example.name
+  sku_name            = "S1"
+}
+
+# 4. Create an Azure Function App with Managed Identity
+resource "azurerm_function_app" "example" {
+  name                       = "example-function-app"
+  location                  = azurerm_resource_group.example.location
+  resource_group_name       = azurerm_resource_group.example.name
+  app_service_plan_id       = azurerm_app_service_plan.example.id
+  storage_account_name     = azurerm_storage_account.example.name
+  storage_account_access_key = azurerm_storage_account.example.primary_access_key
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+# 5. Create an App Service Plan for the Function App
+resource "azurerm_app_service_plan" "example" {
+  name                         = "example-app-service-plan"
+  location                     = azurerm_resource_group.example.location
+  resource_group_name          = azurerm_resource_group.example.name
+  kind                         = "FunctionApp"
+  reserved                     = true
+  sku {
+    tier = "Standard"
+    size = "S1"
+  }
+}
+
+# 6. Create a Storage Account (required for Function App)
+resource "azurerm_storage_account" "example" {
+  name                     = "examplestorageacc"
+  resource_group_name       = azurerm_resource_group.example.name
+  location                 = azurerm_resource_group.example.location
+  account_tier              = "Standard"
+  account_replication_type = "LRS"
+}
+
+# 7. Assign the Managed Identity of the Azure Function to SQL DB Contributor Role
+resource "azurerm_role_assignment" "function_sql_db_contributor" {
+  principal_id   = azurerm_function_app.example.identity[0].principal_id
+  role_definition_name = "SQL DB Contributor"
+  scope           = azurerm_sql_server.example.id
+}
+
+# 8. Assign the Managed Identity of the Azure Function to DB Data Reader Role (or DB Data Writer, DB Owner, etc.)
+resource "azurerm_role_assignment" "function_sql_db_data_reader" {
+  principal_id   = azurerm_function_app.example.identity[0].principal_id
+  role_definition_name = "DB Data Reader"
+  scope           = azurerm_sql_database.example.id
+}
+
+# Optional: You can add more roles, for example, DB Data Writer or DB Owner, based on your use case.
+resource "azurerm_role_assignment" "function_sql_db_data_writer" {
+  principal_id   = azurerm_function_app.example.identity[0].principal_id
+  role_definition_name = "DB Data Writer"
+  scope           = azurerm_sql_database.example.id
+}
+
