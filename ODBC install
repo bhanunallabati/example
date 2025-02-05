@@ -1,0 +1,85 @@
+The error you're seeing (`unixODBC: cannot open library 'ODBC Driver 18 for SQL Server'`) typically happens because the ODBC driver is either not installed or not properly configured. Here's how you can resolve this on Ubuntu Linux.
+
+### Steps to Fix the Issue:
+
+1. **Install the Microsoft ODBC Driver for SQL Server:**
+   First, you need to install the required ODBC driver on your Ubuntu system.
+
+   **For Ubuntu 20.04 or later:**
+
+   Run the following commands to install the ODBC Driver 18 for SQL Server:
+
+   ```bash
+   sudo apt-get update
+   sudo apt-get install curl
+   sudo curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+   sudo curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+   sudo apt-get update
+   sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+   ```
+
+   This will install ODBC Driver 18 for SQL Server.
+
+2. **Install `unixODBC` (if it's not installed):**
+   `unixODBC` is required to use ODBC drivers. If you don’t have it installed, you can install it using:
+
+   ```bash
+   sudo apt-get install unixodbc
+   ```
+
+3. **Verify the ODBC Driver Installation:**
+   After installation, you should verify that the ODBC Driver 18 for SQL Server is available. Run the following command:
+
+   ```bash
+   odbcinst -q -d -n "ODBC Driver 18 for SQL Server"
+   ```
+
+   This should show details about the driver if it's properly installed. If it's not found, the driver might not have been installed correctly.
+
+4. **Check `odbc.ini` and `odbcinst.ini` Configuration:**
+   Ensure that your ODBC driver is properly configured in `odbcinst.ini`. You can typically find this file at `/etc/odbcinst.ini`. If it's not there, create it.
+
+   Example of adding the ODBC driver to `/etc/odbcinst.ini`:
+
+   ```ini
+   [ODBC Driver 18 for SQL Server]
+   Description = Microsoft ODBC Driver 18 for SQL Server
+   Driver      = /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.so
+   ```
+
+   Ensure the driver path corresponds to where the driver has been installed on your system. You can check the installed driver path by running:
+
+   ```bash
+   ls /opt/microsoft/msodbcsql18/
+   ```
+
+   Make sure the library file (`libmsodbcsql-18.so`) is present in the path.
+
+5. **Update the `pyodbc` Connection String:**
+   Ensure you're using the correct ODBC driver in your Python code. The connection string should reference the correct driver:
+
+   ```python
+   connection_string = (
+       "Driver={ODBC Driver 18 for SQL Server};"
+       "Server=mdaservertest.database.windows.net,1433;"
+       "Database=MDAtest;"
+       "UID=mdaadmin;"
+       "PWD=mda#123hai;"
+       "Encrypt=yes;"
+       "TrustServerCertificate=no;"
+       "Connection Timeout=30;"
+   )
+   ```
+
+6. **Test the Connection:**
+   After performing these steps, try running your Python code again to see if the issue is resolved. If you're still encountering issues, please let me know, and we can troubleshoot further.
+
+### Additional Troubleshooting:
+- Ensure that your ODBC driver's shared libraries are accessible and that any necessary environment variables (like `LD_LIBRARY_PATH`) are set correctly.
+- You can also check logs for any further details about the error using:
+
+  ```bash
+  tail -f /var/log/syslog
+  ```
+
+Let me know how it goes!
