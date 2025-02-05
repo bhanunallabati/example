@@ -80,3 +80,58 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         mimetype="application/json",
         status_code=200
     )
+
+###############################
+
+import os
+import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import azure.functions as func
+
+# Azure SQL Connection Details
+server = os.getenv('SQL_SERVER')  # E.g. 'your-server.database.windows.net'
+database = os.getenv('SQL_DATABASE')  # E.g. 'your-database'
+username = os.getenv('SQL_USERNAME')  # E.g. 'your-username'
+password = os.getenv('SQL_PASSWORD')  # E.g. 'your-password'
+driver = '{ODBC Driver 17 for SQL Server}'  # or your installed ODBC driver
+
+# Define the connection string
+connection_string = f'mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}'
+
+# Function to create a connection to the database
+def create_db_engine():
+    engine = create_engine(connection_string)
+    return engine
+
+# Azure Function to fetch data from Azure SQL Database
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    # Create engine
+    engine = create_db_engine()
+    
+    # Create a session to interact with the database
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    
+    try:
+        # Example query: Get the first 5 rows from a table (Replace with your actual query)
+        result = session.execute('SELECT TOP 5 * FROM your_table')
+        
+        # Log the result or process it
+        rows = result.fetchall()
+        
+        # Return the rows as an HTTP response (for demo purposes, convert to string)
+        return func.HttpResponse(
+            str(rows),
+            status_code=200
+        )
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        return func.HttpResponse(
+            f"Error: {e}",
+            status_code=500
+        )
+    finally:
+        session.close()
+
+
