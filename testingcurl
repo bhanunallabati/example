@@ -1,0 +1,6 @@
+curl -X POST "https://<your-function-url>/api/<your-function-name>?param1=value1&param2=value2" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Function <your-api-key>" \
+    -d '{"key1": "value1", "key2": "value2"}'
+
+
