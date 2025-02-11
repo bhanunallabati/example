@@ -1,0 +1,10 @@
+resource "azurerm_role_assignment" "user_role_assignment" {
+  principal_id   = data.azurerm_user.example.object_id
+  role_definition_name = "Contributor"  # Choose appropriate role
+  scope           = azurerm_function_app.example.id
+}
+
+# If you have specific user data available for email-based lookup (example for the given user):
+data "azurerm_user" "example" {
+  user_principal_name = "abc.xy@hdh.com"
+}
