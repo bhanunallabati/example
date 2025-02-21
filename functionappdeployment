@@ -1,0 +1,151 @@
+When deploying an Azure Functions app from a GitHub repository using Python, you'll need to follow a specific folder structure to ensure that your code and dependencies are correctly deployed. Below is an example of the structure that you should follow.
+
+### Azure Functions App Folder Structure
+
+```
+my-function-app/
+├── .git/                     # Git repository files
+├── .github/                  # GitHub-related files like workflows (optional)
+├── .venv/                    # Python virtual environment (optional)
+├── functionapp/              # Your function code
+│   ├── __init__.py           # The main entry point of the function
+│   ├── function.json         # Binding configuration for your function
+│   ├── requirements.txt      # Dependencies for the function app
+│   └── local.settings.json   # Local configuration for testing (optional)
+├── host.json                 # Global configuration for all functions
+├── proxy.json                # If you're using a proxy (optional)
+└── README.md                 # Documentation for your function app (optional)
+```
+
+### Explanation of Files and Folders:
+
+1. **`.git/`**: This is the Git directory where your repository information is stored. It is created automatically when you initialize your repository.
+
+2. **`.github/`**: This folder can store GitHub Actions workflows if you're setting up CI/CD pipelines for deployment.
+
+3. **`.venv/` (optional)**: It’s a good practice to use a virtual environment to manage your Python dependencies. You may choose to include it in your project (but not commit it to GitHub) or manage it separately.
+
+4. **`functionapp/`**: This folder contains the main code for your Azure Function.
+
+    - **`__init__.py`**: This is the Python function code file. It will contain your logic and will be executed when the function is triggered.
+    - **`function.json`**: This file contains the binding configurations (such as trigger types, input/output bindings) for the function. For example, if the function is triggered by HTTP, you’ll define the HTTP route here.
+    - **`requirements.txt`**: Lists the required Python libraries and dependencies needed for your function app.
+    - **`local.settings.json`**: This is a local configuration file for testing the function locally (don't commit this to GitHub as it may contain sensitive data).
+
+5. **`host.json`**: This is the global configuration file for your entire Azure Function app (not specific to any individual function). It can contain settings for the runtime, logging, etc.
+
+6. **`proxy.json`** (optional): If you're using Azure Functions Proxies (to route HTTP requests), you will need this file to define the proxy rules.
+
+7. **`README.md`**: A markdown file to provide documentation on how to set up and use the function app.
+
+---
+
+### Example of Function Code (`__init__.py`):
+This Python function responds to HTTP requests.
+
+```python
+import logging
+import azure.functions as func
+
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    name = req.params.get('name')
+    if not name:
+        try:
+            req_body = req.get_json()
+        except ValueError:
+            pass
+        else:
+            name = req_body.get('name')
+
+    if name:
+        return func.HttpResponse(f"Hello, {name}!", status_code=200)
+    else:
+        return func.HttpResponse(
+            "Please pass a name on the query string or in the request body",
+            status_code=400
+        )
+```
+
+### Example of `function.json` (for an HTTP-triggered function):
+
+```json
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "req",
+      "type": "httpTrigger",
+      "direction": "in",
+      "authLevel": "function",
+      "methods": ["get", "post"]
+    },
+    {
+      "name": "$return",
+      "type": "http",
+      "direction": "out"
+    }
+  ]
+}
+```
+
+### Example of `requirements.txt`:
+
+```
+azure-functions==1.12.0
+```
+
+### Deployment from GitHub
+
+To deploy your Azure Functions app from GitHub, follow these steps:
+
+1. **Push your code to GitHub**: Make sure your folder structure is committed to your GitHub repository.
+
+2. **Set up Azure Functions App**:
+   - Create a new Function App in the Azure Portal.
+   - Configure continuous deployment by connecting it to your GitHub repository.
+   - Set up the GitHub Actions workflow or Azure DevOps pipeline to deploy your Python function app.
+
+3. **Deploy**: After connecting to GitHub, every push to the repository will trigger a deployment to Azure Functions.
+
+### Using GitHub Actions for Deployment
+
+You can also set up a GitHub Actions workflow for automated deployment. Below is an example of a simple `.github/workflows/azure-functions.yml` file for deploying your Python Azure Function.
+
+```yaml
+name: Azure Functions Python Deployment
+
+on:
+  push:
+    branches:
+      - main  # Deploy when code is pushed to the main branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+
+    - name: Install dependencies
+      run: |
+        python -m venv .venv
+        .venv/bin/pip install -r requirements.txt
+
+    - name: Deploy to Azure Functions
+      uses: Azure/functions-action@v1
+      with:
+        app-name: <your-function-app-name>
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+```
+
+This will set up continuous integration and deployment from GitHub to Azure Functions.
+
+---
+
+This structure is flexible and can be adjusted based on your specific needs, but this should cover the basics of deploying a Python Azure Function app using GitHub.
