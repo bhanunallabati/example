@@ -1,0 +1,79 @@
+name: Snowflake Role Grant Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      ENV:
+        description: 'Target environment (e.g., dev, staging, prod)'
+        required: true
+        default: 'dev'
+
+jobs:
+  grant-roles:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set environment-specific Snowflake credentials
+        id: set-credentials
+        run: |
+          ENV=${{ github.event.inputs.ENV }}
+          
+          if [[ "$ENV" == "dev" ]]; then
+            echo "Using development environment credentials"
+            echo "SNOWFLAKE_ACCOUNT=dev_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=dev_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=${{ secrets.DEV_SNOWFLAKE_PASSWORD }}" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=dev_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=dev_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=dev_schema" >> $GITHUB_ENV
+          elif [[ "$ENV" == "staging" ]]; then
+            echo "Using staging environment credentials"
+            echo "SNOWFLAKE_ACCOUNT=staging_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=staging_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=${{ secrets.STAGING_SNOWFLAKE_PASSWORD }}" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=staging_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=staging_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=staging_schema" >> $GITHUB_ENV
+          elif [[ "$ENV" == "prod" ]]; then
+            echo "Using production environment credentials"
+            echo "SNOWFLAKE_ACCOUNT=prod_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=prod_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=${{ secrets.PROD_SNOWFLAKE_PASSWORD }}" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=prod_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=prod_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=prod_schema" >> $GITHUB_ENV
+          else
+            echo "Invalid environment. Please specify dev, staging, or prod."
+            exit 1
+          fi
+
+      - name: Set up Snowflake CLI
+        uses: snowflakedb/snowflake-cli-action@v1
+        with:
+          snowflake_account: ${{ env.SNOWFLAKE_ACCOUNT }}
+          snowflake_user: ${{ env.SNOWFLAKE_USER }}
+          snowflake_password: ${{ env.SNOWFLAKE_PASSWORD }}
+          snowflake_warehouse: ${{ env.SNOWFLAKE_WAREHOUSE }}
+          snowflake_database: ${{ env.SNOWFLAKE_DATABASE }}
+          snowflake_schema: ${{ env.SNOWFLAKE_SCHEMA }}
+
+      - name: Execute SQL command based on environment
+        run: |
+          ENV=${{ github.event.inputs.ENV }}
+          
+          if [[ "$ENV" == "dev" ]]; then
+            echo "Granting roles for development environment"
+            snowsql -q "GRANT ROLE dev_role TO USER your_user"
+          elif [[ "$ENV" == "staging" ]]; then
+            echo "Granting roles for staging environment"
+            snowsql -q "GRANT ROLE staging_role TO USER your_user"
+          elif [[ "$ENV" == "prod" ]]; then
+            echo "Granting roles for production environment"
+            snowsql -q "GRANT ROLE prod_role TO USER your_user"
+          else
+            echo "Invalid environment. Please specify dev, staging, or prod."
+            exit 1
+          fi
