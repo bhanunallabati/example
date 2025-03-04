@@ -1,0 +1,32 @@
+name: Execute Snowflake SQL
+
+on:
+  push:
+    branches:
+      - main  # This can be any branch you want to trigger the workflow on
+  workflow_dispatch:  # Allows manually triggering the workflow
+
+jobs:
+  execute-snowflake-sql:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Snowflake CLI (snowflake-cli)
+        run: |
+          curl -fsSL https://github.com/snowflakedb/snowflake-cli/releases/download/v1.0.0/snowflake-cli-linux-amd64 -o snowflake-cli
+          chmod +x snowflake-cli
+          sudo mv snowflake-cli /usr/local/bin/
+
+      - name: Snowflake SQL Execution
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+        run: |
+          snowflake-cli -a $SNOWFLAKE_ACCOUNT -u $SNOWFLAKE_USER -p $SNOWFLAKE_PASSWORD -w $SNOWFLAKE_WAREHOUSE -d $SNOWFLAKE_DATABASE -s $SNOWFLAKE_SCHEMA -f ./scripts/your-sql-script.sql
