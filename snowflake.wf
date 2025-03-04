@@ -3,8 +3,21 @@ name: Execute Snowflake SQL
 on:
   push:
     branches:
-      - main  # This can be any branch you want to trigger the workflow on
-  workflow_dispatch:  # Allows manually triggering the workflow
+      - main  # Trigger on push to main branch (optional)
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Choose the environment (DEV, DEV_QA, SANDBOX, UAT, SIT, PROD)'
+        required: true
+        default: 'DEV'
+        type: choice
+        options:
+          - DEV
+          - DEV_QA
+          - SANDBOX
+          - UAT
+          - SIT
+          - PROD
 
 jobs:
   execute-snowflake-sql:
@@ -20,13 +33,58 @@ jobs:
           chmod +x snowflake-cli
           sudo mv snowflake-cli /usr/local/bin/
 
+      - name: Set Snowflake environment variables
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "DEV" ]; then
+            echo "Using DEV environment"
+            echo "SNOWFLAKE_ACCOUNT=dev_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=dev_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=dev_password" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=dev_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=dev_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=dev_schema" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" == "DEV_QA" ]; then
+            echo "Using DEV_QA environment"
+            echo "SNOWFLAKE_ACCOUNT=dev_qa_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=dev_qa_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=dev_qa_password" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=dev_qa_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=dev_qa_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=dev_qa_schema" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" == "SANDBOX" ]; then
+            echo "Using SANDBOX environment"
+            echo "SNOWFLAKE_ACCOUNT=sandbox_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=sandbox_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=sandbox_password" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=sandbox_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=sandbox_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=sandbox_schema" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" == "UAT" ]; then
+            echo "Using UAT environment"
+            echo "SNOWFLAKE_ACCOUNT=uat_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=uat_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=uat_password" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=uat_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=uat_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=uat_schema" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" == "SIT" ]; then
+            echo "Using SIT environment"
+            echo "SNOWFLAKE_ACCOUNT=sit_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=sit_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=sit_password" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=sit_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=sit_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=sit_schema" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" == "PROD" ]; then
+            echo "Using PROD environment"
+            echo "SNOWFLAKE_ACCOUNT=prod_account" >> $GITHUB_ENV
+            echo "SNOWFLAKE_USER=prod_user" >> $GITHUB_ENV
+            echo "SNOWFLAKE_PASSWORD=prod_password" >> $GITHUB_ENV
+            echo "SNOWFLAKE_WAREHOUSE=prod_warehouse" >> $GITHUB_ENV
+            echo "SNOWFLAKE_DATABASE=prod_database" >> $GITHUB_ENV
+            echo "SNOWFLAKE_SCHEMA=prod_schema" >> $GITHUB_ENV
+          fi
+
       - name: Snowflake SQL Execution
-        env:
-          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
         run: |
           snowflake-cli -a $SNOWFLAKE_ACCOUNT -u $SNOWFLAKE_USER -p $SNOWFLAKE_PASSWORD -w $SNOWFLAKE_WAREHOUSE -d $SNOWFLAKE_DATABASE -s $SNOWFLAKE_SCHEMA -f ./scripts/your-sql-script.sql
