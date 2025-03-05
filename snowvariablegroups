@@ -1,0 +1,45 @@
+name: Execute Snowflake SQL based on Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select the Environment (DEV, PROD, SIT)'
+        required: true
+        default: 'DEV'
+        type: choice
+        options:
+          - DEV
+          - PROD
+          - SIT
+
+jobs:
+  execute-snowflake-query:
+    runs-on: ubuntu-latest
+
+    environment: ${{ github.event.inputs.environment }}  # Select environment dynamically based on input
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set Snowflake credentials from environment secrets
+      run: |
+        echo "Using ${{ github.event.inputs.environment }} environment"
+        echo "SNOWFLAKE_ACCOUNT=${{ secrets[github.event.inputs.environment + '_SNOWFLAKE_ACCOUNT'] }}" >> $GITHUB_ENV
+        echo "SNOWFLAKE_USER=${{ secrets[github.event.inputs.environment + '_SNOWFLAKE_USER'] }}" >> $GITHUB_ENV
+        echo "SNOWFLAKE_PASSWORD=${{ secrets[github.event.inputs.environment + '_SNOWFLAKE_PASSWORD'] }}" >> $GITHUB_ENV
+        echo "SNOWFLAKE_ROLE=${{ secrets[github.event.inputs.environment + '_SNOWFLAKE_ROLE'] }}" >> $GITHUB_ENV
+        echo "SNOWFLAKE_DATABASE=${{ secrets[github.event.inputs.environment + '_SNOWFLAKE_DATABASE'] }}" >> $GITHUB_ENV
+        echo "SNOWFLAKE_SCHEMA=${{ secrets[github.event.inputs.environment + '_SNOWFLAKE_SCHEMA'] }}" >> $GITHUB_ENV
+
+    - name: Install SnowSQL
+      run: |
+        curl -O https://s3.amazonaws.com/snowsql-public/1.2.20/snowsql-1.2.20-linux_x86_64.bash
+        chmod +x snowsql-1.2.20-linux_x86_64.bash
+        sudo ./snowsql-1.2.20-linux_x86_64.bash
+
+    - name: Execute SQL on Snowflake
+      run: |
+        echo "Executing SQL on Snowflake for ${{ github.event.inputs.environment }} environment"
+        snowsql -a $SNOWFLAKE_ACCOUNT -u $SNOWFLAKE_USER -r $SNOWFLAKE_ROLE -d $SNOWFLAKE_DATABASE -s $SNOWFLAKE_SCHEMA -w MY_WAREHOUSE -f ./path/to/your_query.sql
