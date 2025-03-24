@@ -1,0 +1,50 @@
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from datetime import datetime
+
+# Define the Python functions that will be used in the tasks
+def task_1():
+    print("Executing Task 1")
+
+def task_2():
+    print("Executing Task 2")
+
+def task_3():
+    print("Executing Task 3")
+
+# Define the DAG
+default_args = {
+    'owner': 'airflow',
+    'retries': 1,
+    'start_date': datetime(2025, 3, 24),
+}
+
+dag = DAG(
+    'example_python_dag',
+    default_args=default_args,
+    description='An example DAG with Python operators',
+    schedule_interval=None,  # No schedule, manual trigger
+    catchup=False,  # Do not backfill for previous dates
+)
+
+# Define the tasks using PythonOperator
+task_1_operator = PythonOperator(
+    task_id='task_1',
+    python_callable=task_1,
+    dag=dag,
+)
+
+task_2_operator = PythonOperator(
+    task_id='task_2',
+    python_callable=task_2,
+    dag=dag,
+)
+
+task_3_operator = PythonOperator(
+    task_id='task_3',
+    python_callable=task_3,
+    dag=dag,
+)
+
+# Set task dependencies (task execution order)
+task_1_operator >> task_2_operator >> task_3_operator
