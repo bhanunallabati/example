@@ -1,3 +1,5 @@
+pip install apache-airflow-providers-collibra
+
 import logging
 import os
 import azure.functions as func
