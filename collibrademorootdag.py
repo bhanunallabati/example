@@ -1,11 +1,6 @@
 from airflow import DAG
 from datetime import datetime
-from utils.collibra_utils import (
-    create_aggregate_score_task,
-    create_rule_task,
-    create_score_task,
-    create_job_task
-)
+from utils.collibra_utils import Collibra
 
 # Define default_args
 default_args = {
@@ -25,26 +20,26 @@ with DAG(
     catchup=False
 ) as dag:
 
-    # Create tasks using utility functions
-    aggregate_score_task = create_aggregate_score_task(
+    # Create tasks using the Collibra class
+    aggregate_score_task = Collibra.create_aggregate_score_task(
         task_id='collibra_aggregate_score',
         config={'score_type': 'aggregate', 'threshold': 90},
         dag=dag
     )
 
-    rule_task = create_rule_task(
+    rule_task = Collibra.create_rule_task(
         task_id='collibra_rule_check',
         rule_config={'rule_name': 'data_quality_rule'},
         dag=dag
     )
 
-    score_task = create_score_task(
+    score_task = Collibra.create_score_task(
         task_id='collibra_score_check',
         score_config={'metric': 'accuracy'},
         dag=dag
     )
 
-    job_task = create_job_task(
+    job_task = Collibra.create_job_task(
         task_id='collibra_job_execution',
         job_config={'job_id': '12345'},
         dag=dag
