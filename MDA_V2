@@ -2,6 +2,14 @@ pip install apache-airflow-providers-collibra
 collibra_instance = Collibra(collibra_dataset="your_dataset_name", rundate=datetime.now())
 collibra_instance.collibraDQexecute()
 
+def my_collibra_dq_dag():
+    with TaskGroup("collibra_tasks") as tg:
+        collibra_instance = Collibra(collibra_dataset="example_dataset", rundate=datetime.now())
+        collibra_instance.collibra_dq_execute()
+
+# Instantiate the DAG
+my_dag = my_collibra_dq_dag()
+
 import logging
 import os
 import azure.functions as func
