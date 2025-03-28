@@ -1,0 +1,46 @@
+name: Populate Configuration
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'cds/**'
+      - 'bds/**'
+
+jobs:
+  check-cds:
+    if: contains(github.event.pull_request.head.ref, 'cds')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Populate CDS configuration
+        run: |
+          echo "Populating CDS configuration"
+          # Add your script or command to populate CDS configuration here
+
+  check-bds:
+    if: contains(github.event.pull_request.head.ref, 'bds')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Populate BDS configuration
+        run: |
+          echo "Populating BDS configuration"
+          # Add your script or command to populate BDS configuration here
+
+  propagate-changes:
+    needs: [check-cds, check-bds]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Propagate changes to all folders
+        run: |
+          echo "Propagating changes to all folders"
+          # Add your script or command to propagate changes here
