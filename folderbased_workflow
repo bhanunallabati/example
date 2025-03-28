@@ -1,4 +1,4 @@
-name: Populate Configuration
+name: Populate Configuration and Terraform Plan
 
 on:
   pull_request:
@@ -9,32 +9,56 @@ on:
       - 'bds/**'
 
 jobs:
-  check-cds:
-    if: contains(github.event.pull_request.head.ref, 'cds')
+  set-config:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Populate CDS configuration
+      - name: Determine Configuration
+        id: determine-config
         run: |
-          echo "Populating CDS configuration"
-          # Add your script or command to populate CDS configuration here
+          if [[ "${{ github.event.pull_request.head.ref }}" == *"infrastructure/cds"* ]]; then
+            echo "CONFIGURATION=cds" >> $GITHUB_ENV
+          elif [[ "${{ github.event.pull_request.head.ref }}" == *"infrastructure/bds"* ]]; then
+            echo "CONFIGURATION=bds" >> $GITHUB_ENV
+          else
+            echo "CONFIGURATION=unknown" >> $GITHUB_ENV
+          fi
 
-  check-bds:
-    if: contains(github.event.pull_request.head.ref, 'bds')
+  check-config:
     runs-on: ubuntu-latest
+    needs: set-config
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Populate BDS configuration
+      - name: Populate Configuration
         run: |
-          echo "Populating BDS configuration"
-          # Add your script or command to populate BDS configuration here
+          if [[ "${{ env.CONFIGURATION }}" == "cds" ]]; then
+            echo "Populating CDS configuration"
+            # Add your script or command to populate CDS configuration here
+          elif [[ "${{ env.CONFIGURATION }}" == "bds" ]]; then
+            echo "Populating BDS configuration"
+            # Add your script or command to populate BDS configuration here
+          else
+            echo "No valid configuration found"
+
+      - name: Run Terraform Plan
+        run: |
+          if [[ "${{ env.CONFIGURATION }}" == "cds" ]]; then
+            cd cds
+            terraform init
+            terraform plan
+          elif [[ "${{ env.CONFIGURATION }}" == "bds" ]]; then
+            cd bds
+            terraform init
+            terraform plan
+          else
+            echo "No valid configuration found for Terraform plan"
 
   propagate-changes:
-    needs: [check-cds, check-bds]
+    needs: [check-config]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
