@@ -1,0 +1,73 @@
+name: Execute Jobs Based on Folder Changes and Environment Variables
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+env:
+  CDS_ENABLED: 'true'    # Environment variable to enable/disable the CDS job
+  DMG_ENABLED: 'false'   # Environment variable to enable/disable the DMG job
+  CGD_ENABLED: 'true'    # Environment variable to enable/disable the CGD job
+
+jobs:
+  check_modified_folders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2  # Ensure at least 2 commits are fetched to check PR diff
+
+      - name: Get PR diff and list modified folders
+        id: get_modified_folders
+        run: |
+          # Get the list of modified files in the PR
+          PR_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+
+          # Extract the unique folders from the modified files
+          MODIFIED_FOLDERS=$(echo "$PR_FILES" | awk -F'/' '{print $1}' | sort -u)
+
+          # Output the modified folders
+          echo "Modified Folders: $MODIFIED_FOLDERS"
+          
+          # Set the modified folders as output variables so they can be used in subsequent jobs
+          echo "::set-output name=modified_folders::$MODIFIED_FOLDERS"
+
+  cds_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == 'false' }} && ${{ env.CDS_ENABLED == 'true' }} && contains(steps.get_modified_folders.outputs.modified_folders, 'cds')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Execute CDS job
+        run: |
+          echo "Running CDS job because 'cds' folder was modified and CDS job is enabled."
+          # Add your CDS-specific job commands here
+
+  dmg_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == 'false' }} && ${{ env.DMG_ENABLED == 'true' }} && contains(steps.get_modified_folders.outputs.modified_folders, 'dmg')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Execute DMG job
+        run: |
+          echo "Running DMG job because 'dmg' folder was modified and DMG job is enabled."
+          # Add your DMG-specific job commands here
+
+  cgd_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == 'false' }} && ${{ env.CGD_ENABLED == 'true' }} && contains(steps.get_modified_folders.outputs.modified_folders, 'cgd')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Execute CGD job
+        run: |
+          echo "Running CGD job because 'cgd' folder was modified and CGD job is enabled."
+          # Add your CGD-specific job commands here
