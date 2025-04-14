@@ -1,0 +1,38 @@
+import logging
+import pyodbc
+import azure.functions as func
+from azure.identity import ManagedIdentityCredential
+
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    # Replace with your SQL server details
+    server = '<your-sql-server>.database.windows.net'
+    database = '<your-database-name>'
+    user_assigned_client_id = '<user-assigned-managed-identity-client-id>'
+
+    try:
+        # Get access token for SQL
+        credential = ManagedIdentityCredential(client_id=user_assigned_client_id)
+        access_token = credential.get_token("https://database.windows.net/.default").token
+
+        # pyodbc connection string using access token
+        conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};'
+        token_bytes = bytes(access_token, "utf-8")
+        exptoken = b""
+        for i in token_bytes:
+            exptoken += bytes({i})
+            exptoken += bytes(1)
+
+        conn = pyodbc.connect(conn_str, attrs_before={1256: exptoken})
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT TOP 10 * FROM your_table")
+        rows = cursor.fetchall()
+
+        result = [str(row) for row in rows]
+        return func.HttpResponse(f"Query result: {result}", status_code=200)
+
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        return func.HttpResponse(f"Error: {str(e)}", status_code=500)
