@@ -36,3 +36,35 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.error(f"Error: {e}")
         return func.HttpResponse(f"Error: {str(e)}", status_code=500)
+#-------------------------------------------------
+
+import pyodbc
+from azure.identity import ManagedIdentityCredential
+import struct
+
+# Configs
+server = '<your-server-name>.database.windows.net'
+database = '<your-database-name>'
+table_name = '<your-table-name>'
+user_managed_identity_client_id = '<your-umi-client-id>'  # UMI client ID
+
+# Get token using the managed identity
+credential = ManagedIdentityCredential(client_id=user_managed_identity_client_id)
+token = credential.get_token("https://database.windows.net/.default")
+
+# Convert token to bytes for pyodbc
+access_token = bytes(token.token, "utf-8")
+exptoken = b""
+for i in access_token:
+    exptoken += bytes({i})
+    exptoken += bytes(1)
+
+# Connection string with access token
+conn_str = f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={server};DATABASE={database};Authentication=ActiveDirectoryMsi'
+
+# Connect and run query
+with pyodbc.connect(conn_str, attrs_before={1256: exptoken}) as conn:
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+    row_count = cursor.fetchone()[0]
+    print(f"Row count in table '{table_name}': {row_count}")
