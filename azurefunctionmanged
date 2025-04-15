@@ -68,3 +68,35 @@ with pyodbc.connect(conn_str, attrs_before={1256: exptoken}) as conn:
     cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
     row_count = cursor.fetchone()[0]
     print(f"Row count in table '{table_name}': {row_count}")
+
+########################################
+import pyodbc
+from azure.identity import ManagedIdentityCredential
+
+# Settings
+server = '<your-server>.database.windows.net'
+database = '<your-database>'
+table_name = '<your-table>'
+client_id = '<your-user-managed-identity-client-id>'  # UMI
+
+# Get token
+credential = ManagedIdentityCredential(client_id=client_id)
+token = credential.get_token("https://database.windows.net/.default")
+access_token = bytes(token.token, 'utf-8')
+
+# Format token for ODBC (required for pyodbc)
+token_bytes = b''
+for b in access_token:
+    token_bytes += bytes([b])
+    token_bytes += b'\x00'  # null-byte padding
+
+# Build connection string WITHOUT authentication flags
+conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={server};DATABASE={database};Encrypt=yes;TrustServerCertificate=no"
+
+# Connect using access token
+conn = pyodbc.connect(conn_str, attrs_before={1256: token_bytes})
+cursor = conn.cursor()
+cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+count = cursor.fetchone()[0]
+print(f"Row count in '{table_name}': {count}")
+
