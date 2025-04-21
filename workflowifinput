@@ -1,0 +1,30 @@
+name: Environment Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      ENV:
+        description: 'Select the environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+          - uat
+
+jobs:
+  echo-environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo DEV
+        if: ${{ github.event.inputs.ENV == 'dev' }}
+        run: echo "dev"
+
+      - name: Echo PROD
+        if: ${{ github.event.inputs.ENV == 'prod' }}
+        run: echo "prod"
+
+      - name: Echo UAT
+        if: ${{ github.event.inputs.ENV == 'uat' }}
+        run: echo "UAT"
