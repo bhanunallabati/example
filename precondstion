@@ -1,0 +1,41 @@
+name: Conditional Terraform Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment_group:
+        description: 'Select Environment Group'
+        required: true
+        default: 'DEV'
+        type: choice
+        options:
+          - DEV
+          - SIT
+          - UAT
+          - UAT1
+          - PROD
+
+      configuration:
+        description: 'Select Configuration'
+        required: true
+        default: 'snow'
+        type: choice
+        options:
+          - snow
+          - cds
+          - dms
+          - abc
+
+jobs:
+  deploy:
+    name: Terraform Apply for SIT or UAT with Configuration snow
+    runs-on: ubuntu-latest
+    if: |
+      contains(fromJson('["SIT", "UAT"]'), github.event.inputs.environment_group) &&
+      github.event.inputs.configuration == 'snow'
+    steps:
+      - name: Run Terraform Apply
+        run: |
+          echo "✅ Running Terraform for ${{ github.event.inputs.environment_group }} with config ${{ github.event.inputs.configuration }}"
+          terraform init
+          terraform apply -auto-approve
