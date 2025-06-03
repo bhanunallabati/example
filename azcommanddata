@@ -1,3 +1,12 @@
+
+az functionapp function show \
+  --function-name <FunctionName> \
+  --name <FunctionAppName> \
+  --resource-group <ResourceGroupName> \
+  --query "invokeUrlTemplate" \
+  -o tsv
+
+
 az functionapp function keys list \
   --function-name <FunctionName> \
   --name <FunctionAppName> \
