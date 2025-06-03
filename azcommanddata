@@ -1,0 +1,6 @@
+az functionapp function keys list \
+  --function-name <FunctionName> \
+  --name <FunctionAppName> \
+  --resource-group <ResourceGroupName> \
+  --query "default" \
+  -o tsv
